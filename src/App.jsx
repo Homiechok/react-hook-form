@@ -5,10 +5,11 @@ export default function App() {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm();
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
     console.log(data);
   };
 
@@ -44,7 +45,9 @@ export default function App() {
       {errors.password && (
         <div className="text-red-500">{errors.password.message}</div>
       )}
-      <button type="submit">Submit</button>
+      <button disabled={isSubmitting} type="submit">
+        {isSubmitting ? "Loading..." : "Submit"}
+      </button>
     </form>
   );
 }
