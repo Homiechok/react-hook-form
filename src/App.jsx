@@ -2,45 +2,59 @@ import "./App.css";
 import { useUpdateUser, useUser } from "./api.js";
 import { useEffect, useState } from "react";
 // import { useForm } from "react-hook-form";
-// import * as yup from "yup";
+import * as yup from "yup";
+import { z } from "zod";
 // import {yupResolver} from "@hookform/resolvers/yup/src/index.js";
+
+const initialFormState = {
+  name: "",
+  email: "",
+  password: "",
+};
+
+const formDataSchema = z.object({
+  name: z.string().min(3),
+  email: z.string().email(),
+  password: z.string().min(8),
+});
 
 export default function App({ id }) {
   const userQuery = useUser(id);
   const updateUserMutation = useUpdateUser();
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-  });
-  const [isDirty, setIsDirty] = useState(false);
+  const [userFormData, setUserFormData] = useState({});
+  const [isError, setIsError] = useState(false);
 
-  useEffect(() => {
-    if (userQuery.data) {
-      setFormData(userQuery.data);
+  const formData = {
+    ...initialFormState,
+    ...userQuery.data,
+    ...userFormData,
+  };
+
+  const isDirty = Object.entries(userFormData).some(
+    ([key, value]) => userQuery.data?.[key] !== value,
+  );
+
+  const reset = () => setUserFormData({});
+
+  const validate = () => {
+    const res = formDataSchema.safeParse(formData);
+
+    if (res.success) {
+      return undefined;
+    } else {
+      return res.error.format();
     }
-  }, [userQuery.data]);
-
-  useEffect(() => {
-    setIsDirty(
-      Object.entries(formData).some(
-        ([key, value]) => userQuery.data?.[key] !== value,
-      ),
-    );
-  }, [formData, userQuery.data]);
-
-  const reset = () => {
-    setFormData(
-      userQuery.data ?? {
-        name: "",
-        email: "",
-        password: "",
-      },
-    );
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const errors = validate();
+
+    if (errors) {
+      setIsError(true);
+      return;
+    }
 
     await updateUserMutation.mutateAsync({
       id,
@@ -48,12 +62,7 @@ export default function App({ id }) {
     });
   };
 
-  // const schema = yup
-  //   .object({
-  //     email: yup.string().email().required(),
-  //     password: yup.string().min(8).required(),
-  //   })
-  //   .required();
+  const errors = isError ? validate() : undefined;
 
   // const {
   //   register,
@@ -85,24 +94,31 @@ export default function App({ id }) {
         name="name"
         placeholder="Name"
         value={formData.name}
-        onChange={(e) => setFormData((l) => ({ ...l, name: e.target.value }))}
+        onChange={(e) =>
+          setUserFormData((l) => ({ ...l, name: e.target.value }))
+        }
       />
+      <div className="text-rose-500">{errors?.name?._errors.join(', ')}</div>
       <input
         type="text"
         name="email"
         placeholder="Email"
         value={formData.email}
-        onChange={(e) => setFormData((l) => ({ ...l, email: e.target.value }))}
+        onChange={(e) =>
+          setUserFormData((l) => ({ ...l, email: e.target.value }))
+        }
       />
+      <div className="text-rose-500">{errors?.email?._errors.join(', ')}</div>
       <input
         type="password"
         name="password"
         placeholder="Password"
         value={formData.password}
         onChange={(e) =>
-          setFormData((l) => ({ ...l, password: e.target.value }))
+          setUserFormData((l) => ({ ...l, password: e.target.value }))
         }
       />
+      <div className="text-rose-500">{errors?.password?._errors.join(', ')}</div>
       <button
         type="submit"
         className="!bg-cyan-400"
@@ -120,21 +136,4 @@ export default function App({ id }) {
       </button>
     </form>
   );
-
-  // return (
-  //   <form className="flex flex-col gap-2" onSubmit={handleSubmit(onSubmit)}>
-  //     <input {...register("email")} type="text" placeholder="Email" />
-  //     {errors.email && (
-  //       <div className="text-red-500">{errors.email.message}</div>
-  //     )}
-  //     <input {...register("password")} type="password" placeholder="Password" />
-  //     {errors.password && (
-  //       <div className="text-red-500">{errors.password.message}</div>
-  //     )}
-  //     <button disabled={isSubmitting} type="submit">
-  //       {isSubmitting ? "Loading..." : "Submit"}
-  //     </button>
-  //     {errors.root && <div className="text-red-500">{errors.root.message}</div>}
-  //   </form>
-  // );
 }
